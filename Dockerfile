@@ -1,29 +1,25 @@
-# Use official .NET SDK image to build the app
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS build
+# Use .NET SDK image
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
-# Install ffmpeg in the build image
-RUN apt-get update && apt-get install -y ffmpeg
-
-# Check FFmpeg version to verify it's installed correctly
-RUN ffmpeg -version
-
-# Set working directory
+# Set working directory in the container
 WORKDIR /app
 
-# Copy the project files to the container
+# Copy the .csproj and restore dependencies first (to leverage Docker layer caching)
+COPY *.csproj ./
+RUN dotnet restore
+
+# Now copy the rest of the application code
 COPY . ./
 
-# Restore and build the application
-RUN dotnet restore
+# Build and publish the application
 RUN dotnet publish -c Release -o out
 
-# Use a runtime image to run the application
+# Use the runtime image to run the app
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
-# Copy the build output from the build stage to the runtime image
+# Copy the published application from the build image
 COPY --from=build /app/out /app
 
-# Set the working directory
 WORKDIR /app
 
 # Expose the port the app will listen on
