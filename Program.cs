@@ -32,7 +32,7 @@ class Program
     }
     static async Task Main(string[] args)
     {
-        var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
+        var botToken = Environment.GetEnvironmentVariable("VIDEOSTICKERS_BOT_TOKEN");
         Client = new TelegramBotClient(botToken, cancellationToken: _cts.Token);
         var me = await Client.GetMeAsync();
 
