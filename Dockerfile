@@ -30,4 +30,4 @@ WORKDIR /app
 EXPOSE 80
 
 # Run the application
-ENTRYPOINT ["dotnet", "YourApp.dll"]
+ENTRYPOINT ["dotnet", "videobot2.dll"]
