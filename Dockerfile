@@ -1,9 +1,9 @@
-# Install FFMpeg in the Docker container
-RUN apt-get update && apt-get install -y ffmpeg
-
 # Use .NET SDK image
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
+
+# Install FFMpeg in the Docker container
+RUN apt-get update && apt-get install -y ffmpeg
 
 # Copy and restore dependencies
 COPY . .
