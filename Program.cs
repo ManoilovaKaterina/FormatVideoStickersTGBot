@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualBasic;
+﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -30,6 +31,7 @@ class Program
                 .WithFastStart())
             .ProcessSynchronously();
     }
+
     static async Task Main(string[] args)
     {
         var botToken = Environment.GetEnvironmentVariable("VIDEOSTICKERS_BOT_TOKEN");
@@ -40,19 +42,24 @@ class Program
 
         await SetBotCommandsAsync();
 
-        Client.StartReceiving(
-            HandleUpdateAsync,
-            HandleErrorAsync,
-            new ReceiverOptions
-            {
-                AllowedUpdates = Array.Empty<UpdateType>()
-            },
-            cancellationToken: _cts.Token
-        );
+        Client.StartReceiving(HandleUpdateAsync, HandleErrorAsync, cancellationToken: _cts.Token);
+
+        // HTTP server just to bind to a port
+        CreateHostBuilder(args).Build().Run();
 
         Console.ReadLine();
         _cts.Cancel();
     }
+
+    // minimal server for Render deploy, unnecessary
+    public static IHostBuilder CreateHostBuilder(string[] args) =>
+        Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+                webBuilder.UseUrls($"http://*:{port}");
+                webBuilder.Configure(app => { }); 
+            });
 
     private static async Task SetBotCommandsAsync()
     {
