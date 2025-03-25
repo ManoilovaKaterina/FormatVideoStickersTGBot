@@ -34,7 +34,7 @@ class Program
     {
         var botToken = Environment.GetEnvironmentVariable("VIDEOSTICKERS_BOT_TOKEN");
         Client = new TelegramBotClient(botToken, cancellationToken: _cts.Token);
-        var me = await Client.GetMeAsync();
+        var me = await Client.GetMe();
 
         Console.WriteLine($"@{me.Username} працює... вимкнути на ентер");
 
@@ -56,14 +56,14 @@ class Program
 
     private static async Task SetBotCommandsAsync()
     {
-        await Client.DeleteMyCommandsAsync();
+        await Client.DeleteMyCommands();
 
         var commands = new List<BotCommand>
         {
             new BotCommand { Command = "start", Description = "Старт" }
         };
 
-        await Client.SetMyCommandsAsync(commands);
+        await Client.SetMyCommands(commands);
         Console.WriteLine("Команди виставлені");
     }
 
@@ -88,7 +88,7 @@ class Program
     {
         if (msg.Text == "/start")
         {
-            await Client.SendTextMessageAsync(msg.Chat.Id, "Привіт! Я - бот форматувальщик відео для стикерів тг\n" +
+            await Client.SendMessage(msg.Chat.Id, "Привіт! Я - бот форматувальщик відео для стикерів тг\n" +
                 "Використання: надішли мені відео, яке хочеш зробити стікером, і я відформатую файл як треба, а потім просто перешли його в стікербот");
         }
         else if (msg.Type == MessageType.Video || msg.Type == MessageType.VideoNote)
@@ -96,16 +96,16 @@ class Program
             var fileId = msg.Type == MessageType.Video ? msg.Video.FileId : msg.VideoNote.FileId;
             try
             {
-                await Client.SendTextMessageAsync(msg.Chat.Id, "Дякую! Триває обробка файлу...");
+                await Client.SendMessage(msg.Chat.Id, "Дякую! Триває обробка файлу...");
                 var fileName = msg.From.Id;
-                var file = await Client.GetFileAsync(fileId);
+                var file = await Client.GetFile(fileId);
 
                 var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{fileName}.mp4");
                 var outFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{fileName}out.webm");
 
                 using (var saveStream = new FileStream(filePath, FileMode.Create))
                 {
-                    await Client.DownloadFileAsync(file.FilePath, saveStream);
+                    await Client.DownloadFile(file.FilePath, saveStream);
                     CropVideo(filePath, outFile);
                     await SendResultMessage(msg.Chat.Id, filePath, outFile);
                 }
@@ -115,9 +115,9 @@ class Program
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                await Client.SendTextMessageAsync(msg.Chat.Id, "Виникла помилка :(");
+                await Client.SendMessage(msg.Chat.Id, "Виникла помилка :(");
             }
-            await Client.SendTextMessageAsync(msg.Chat.Id, "Готово! Надішліть наступний файл");
+            await Client.SendMessage(msg.Chat.Id, "Готово! Надішліть наступний файл");
         }
     }
 
@@ -125,13 +125,13 @@ class Program
     {
         using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            await Client.SendVideoAsync(chatId, new InputFileStream(stream, Path.GetFileName(file)));
+            await Client.SendVideo(chatId, new InputFileStream(stream, Path.GetFileName(file)));
         }
     }
 
     private static async Task OnUpdate(CallbackQuery query)
     {
-        await Client.AnswerCallbackQueryAsync(query.Id, $"Ви обрали {query.Data}");
-        await Client.SendTextMessageAsync(query.Message.Chat.Id, $"Юзер {query.From.Username} клікнув на {query.Data}");
+        await Client.AnswerCallbackQuery(query.Id, $"Ви обрали {query.Data}");
+        await Client.SendMessage(query.Message.Chat.Id, $"Юзер {query.From.Username} клікнув на {query.Data}");
     }
 }
