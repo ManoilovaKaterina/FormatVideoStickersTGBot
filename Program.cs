@@ -21,7 +21,11 @@ class Program
     private static CancellationTokenSource _cts = new CancellationTokenSource();
     private static void StartDummyHttpServer() // bypassing render
     {
-        var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+        var port = Environment.GetEnvironmentVariable("PORT");
+        if (string.IsNullOrEmpty(port))
+        {
+            port = "5000"; // fallback
+        }
         var listener = new HttpListener();
         listener.Prefixes.Add($"http://*:{port}/");
         listener.Start();
@@ -91,8 +95,7 @@ class Program
             cancellationToken: _cts.Token
         );
 
-        Console.ReadLine();
-        _cts.Cancel();
+        await Task.Delay(-1, _cts.Token);
     }
 
     private static async Task SetBotCommandsAsync()
