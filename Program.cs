@@ -10,12 +10,38 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using FFMpegCore;
+using System.Net;// bypassing render
+using System.Text;// bypassing render
+
 
 class Program
 {
     private static TelegramBotClient Client = null!;
     private static ConcurrentDictionary<long, string> _userFileRequests = new ConcurrentDictionary<long, string>();
     private static CancellationTokenSource _cts = new CancellationTokenSource();
+    private static void StartDummyHttpServer() // bypassing render
+    {
+        var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+        var listener = new HttpListener();
+        listener.Prefixes.Add($"http://*:{port}/");
+        listener.Start();
+
+        Console.WriteLine($"Dummy HTTP server running on port {port}");
+
+        Task.Run(async () =>
+        {
+            while (true)
+            {
+                var context = await listener.GetContextAsync();
+                var response = context.Response;
+                string responseString = "🟢 Telegram bot is running.";
+                byte[] buffer = Encoding.UTF8.GetBytes(responseString);
+                response.ContentLength64 = buffer.Length;
+                await response.OutputStream.WriteAsync(buffer, 0, buffer.Length);
+                response.OutputStream.Close();
+            }
+        });
+    }
 
     static void CropVideo(string inputFilePath, string outputFilePath)
     {
@@ -40,6 +66,8 @@ class Program
     }
     static async Task Main(string[] args)
     {
+        StartDummyHttpServer(); // bypassing render
+
         var botToken = Environment.GetEnvironmentVariable("VIDEOSTICKERS_BOT_TOKEN");
         if (string.IsNullOrWhiteSpace(botToken))
         {
