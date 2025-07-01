@@ -13,7 +13,7 @@ using FFMpegCore;
 
 class Program
 {
-    private static TelegramBotClient Client;
+    private static TelegramBotClient Client = null!;
     private static ConcurrentDictionary<long, string> _userFileRequests = new ConcurrentDictionary<long, string>();
     private static CancellationTokenSource _cts = new CancellationTokenSource();
 
@@ -41,6 +41,11 @@ class Program
     static async Task Main(string[] args)
     {
         var botToken = Environment.GetEnvironmentVariable("VIDEOSTICKERS_BOT_TOKEN");
+        if (string.IsNullOrWhiteSpace(botToken))
+        {
+            Console.WriteLine("❌ Bot token is missing! Set VIDEOSTICKERS_BOT_TOKEN in Render environment.");
+            return;
+        }
         Client = new TelegramBotClient(botToken, cancellationToken: _cts.Token);
         var me = await Client.GetMe();
 
@@ -87,9 +92,10 @@ class Program
         }
     }
 
-    private static async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+    private static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         Console.WriteLine(exception);
+        return Task.CompletedTask;
     }
 
     private static async Task OnMessage(Message msg)
@@ -101,14 +107,17 @@ class Program
         }
         else if (msg.Type == MessageType.Video || msg.Type == MessageType.VideoNote)
         {
-            var fileId = msg.Type == MessageType.Video ? msg.Video.FileId : msg.VideoNote.FileId;
+            var fileId = msg.Type == MessageType.Video ? msg.Video?.FileId : msg.VideoNote?.FileId;
+            if (fileId == null)
+            {
+                await Client.SendMessage(msg.Chat.Id, "Файл не знайдено.");
+                return;
+            }
             try
             {
                 await Client.SendMessage(msg.Chat.Id, "Дякую! Триває обробка файлу...");
-                Console.WriteLine(msg);
-                Console.WriteLine(msg.From);
-                Console.WriteLine(msg.From.Id);
-                var fileName = msg.From.Id;
+                var userId = msg.From?.Id ?? 0;
+                var fileName = userId;
                 var file = await Client.GetFile(fileId);
                 Console.WriteLine("fileName: " + fileName);
                 Console.WriteLine("file: " + file);
