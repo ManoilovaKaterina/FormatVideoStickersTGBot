@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.VisualBasic;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,18 +19,25 @@ class Program
 
     static void CropVideo(string inputFilePath, string outputFilePath)
     {
-        string scaleFilter = "scale=-1:512";
-        string cropFilter = "crop=512:512:0:512";
-        FFMpegArguments
-            .FromFileInput(inputFilePath)
-            .OutputToFile(outputFilePath, true, options => options
-                .WithCustomArgument($"-vf \"{scaleFilter},{cropFilter}\"")
-                .WithCustomArgument($"-t 3")
-                .WithCustomArgument("-c:v libvpx-vp9 -b:v 400k -an")
-                .WithFastStart())
-            .ProcessSynchronously();
-    }
+        Console.WriteLine("Processing video...");
+        try
+        {
+            string filters = "crop='min(iw,ih)':'min(iw,ih)',scale=512:512";
 
+            FFMpegArguments
+                .FromFileInput(inputFilePath)
+                .OutputToFile(outputFilePath, true, options => options
+                    .WithCustomArgument($"-vf {filters}")
+                    .WithCustomArgument("-t 3")
+                    .WithCustomArgument("-c:v libvpx-vp9 -b:v 400k -an")
+                    .WithFastStart())
+                .ProcessSynchronously();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Error: " + e);
+        }
+    }
     static async Task Main(string[] args)
     {
         var botToken = Environment.GetEnvironmentVariable("VIDEOSTICKERS_BOT_TOKEN");
@@ -42,24 +48,19 @@ class Program
 
         await SetBotCommandsAsync();
 
-        Client.StartReceiving(HandleUpdateAsync, HandleErrorAsync, cancellationToken: _cts.Token);
-
-        // HTTP server just to bind to a port
-        CreateHostBuilder(args).Build().Run();
+        Client.StartReceiving(
+            HandleUpdateAsync,
+            HandleErrorAsync,
+            new ReceiverOptions
+            {
+                AllowedUpdates = Array.Empty<UpdateType>()
+            },
+            cancellationToken: _cts.Token
+        );
 
         Console.ReadLine();
         _cts.Cancel();
     }
-
-    // minimal server for Render deploy, unnecessary
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
-                webBuilder.UseUrls($"http://*:{port}");
-                webBuilder.Configure(app => { }); 
-            });
 
     private static async Task SetBotCommandsAsync()
     {
@@ -104,15 +105,22 @@ class Program
             try
             {
                 await Client.SendMessage(msg.Chat.Id, "Дякую! Триває обробка файлу...");
+                Console.WriteLine(msg);
+                Console.WriteLine(msg.From);
+                Console.WriteLine(msg.From.Id);
                 var fileName = msg.From.Id;
                 var file = await Client.GetFile(fileId);
+                Console.WriteLine("fileName: " + fileName);
+                Console.WriteLine("file: " + file);
 
                 var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{fileName}.mp4");
                 var outFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{fileName}out.webm");
 
                 using (var saveStream = new FileStream(filePath, FileMode.Create))
                 {
+                    Console.WriteLine("Downloading file...");
                     await Client.DownloadFile(file.FilePath, saveStream);
+                    Console.WriteLine("File downloaded! Path: " + filePath);
                     CropVideo(filePath, outFile);
                     await SendResultMessage(msg.Chat.Id, filePath, outFile);
                 }
