@@ -26,6 +26,8 @@ WORKDIR /app
 # Copy the published application from the build image
 COPY --from=build /app/out /app
 
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Expose the port the app will listen on
 EXPOSE 80
 
